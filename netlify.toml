@@ -1,0 +1,13 @@
+[build]
+  # Forces Netlify to step inside the frontend folder instantly
+  base = "frontend"
+  
+  # Compiles your Vite production assets
+  command = "npm run build"
+  
+  # Directs Netlify to the static folder Vite creates
+  publish = "dist"
+
+[build.environment]
+  # Tells Netlify to use Node instead of Python pipelines
+  NODE_VERSION = "20"
