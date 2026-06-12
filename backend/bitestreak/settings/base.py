@@ -16,6 +16,10 @@ environ.Env.read_env(BASE_DIR / ".env")
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
+CORS_ALLOWED_ORIGINS = [
+    "https://freshbites-backend-c6vd.onrender.com",
+    "https://helthybites-frontend.vercel.app",  # Add your live Vercel link here!
+]
 
 # ─── Applications ────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
