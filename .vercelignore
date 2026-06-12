@@ -1,0 +1,5 @@
+backend/
+requirements.txt
+Pipfile
+Pipfile.lock
+manage.py
