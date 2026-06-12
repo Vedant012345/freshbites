@@ -1,0 +1,12 @@
+# railway.toml – Railway deployment configuration for BiteStreak backend
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "sh -c 'python manage.py migrate && python manage.py collectstatic --noinput && gunicorn bitestreak.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120'"
+healthcheckPath = "/api/shop"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
