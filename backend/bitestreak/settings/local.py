@@ -70,19 +70,53 @@ DATABASES = {
 }
 
 # ── Cache: in-memory (no Redis needed) ───────────────────────────────────────
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+IS_RENDER = os.environ.get('RENDER') or 'render' in os.environ.get('RENDER_EXTERNAL_URL', '')
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1')
+
+# ── Cache Config ──────────────────────────────────────────────────────────────
+if IS_RENDER:
+    # Production: Uses in-memory cache to fully bypass Redis container dependency
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "bitestreak-cache-fallback",
+        }
     }
-}
+else:
+    # Local Development: Keeps local Redis active
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            }
+        }
+    }
 
 # ── Celery: run tasks synchronously (no broker/worker needed) ────────────────
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
-CELERY_BROKER_URL = "memory://"
-CELERY_RESULT_BACKEND = "cache+memory://"
-CELERY_TIMEZONE = "UTC"
+# ── Celery Config ─────────────────────────────────────────────────────────────
+if IS_RENDER:
+    # Production: Run tasks synchronously in memory so Render doesn't need Redis
+    CELERY_BROKER_URL = 'memory://'
+    CELERY_RESULT_BACKEND = 'cache+memory://'
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+else:
+    # Local Development: Route tasks through your local Docker/Redis service
+    CELERY_BROKER_URL = REDIS_URL
+    CELERY_RESULT_BACKEND = REDIS_URL
+    CELERY_TASK_ALWAYS_EAGER = False
 
+CELERY_TIMEZONE = "UTC"
+CELERY_BEAT_SCHEDULE = {
+    "expire-daily-qr": {
+        "task": "api.tasks.expire_daily_qr",
+        "schedule": 60.0,
+    },
+}
 # ── JWT ───────────────────────────────────────────────────────────────────────
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
