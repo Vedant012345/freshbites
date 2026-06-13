@@ -28,17 +28,32 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (credentials) => {
     const data = await authService.login(credentials);
+    
+    // Explicitly persist tokens into localStorage to keep session active indefinitely
+    if (data?.access && data?.refresh) {
+      localStorage.setItem("accessToken", data.access);
+      localStorage.setItem("refreshToken", data.refresh);
+      localStorage.setItem("userData", JSON.stringify(data.user));
+    }
+    
     setUser(data?.user || null);
     return data;
   }, []);
 
   const register = useCallback(async (credentials) => {
-    const res = await authService.register(credentials);
+    await authService.register(credentials);
     // Auto-login after register
     const loginData = await authService.login({
       mobile_number: credentials.mobile_number,
       password: credentials.password,
     });
+
+    if (loginData?.access && loginData?.refresh) {
+      localStorage.setItem("accessToken", loginData.access);
+      localStorage.setItem("refreshToken", loginData.refresh);
+      localStorage.setItem("userData", JSON.stringify(loginData.user));
+    }
+
     setUser(loginData?.user || null);
     return loginData;
   }, []);
@@ -49,7 +64,10 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error("Logout request failed:", err);
     } finally {
-      // Always clear user state even if the backend logout endpoint errors out
+      // Clear storage files completely on manual logout trigger
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("userData");
       setUser(null);
     }
   }, []);

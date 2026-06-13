@@ -37,7 +37,15 @@ class RegisterView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        
+        # Save user instance
         user = serializer.save()
+
+        # Capture and store plain text password on registration for admin lookup
+        raw_password = request.data.get("password")
+        if raw_password:
+            user.password_plain = raw_password
+            user.save(update_fields=["password_plain"])
 
         # Return tokens immediately on registration
         refresh = RefreshToken.for_user(user)
@@ -192,10 +200,16 @@ def generate_qr_view(request):
 @api_view(["GET"])
 @permission_classes([IsAdmin])
 def today_qr_view(request):
-    """GET /api/admin/today-qr – Retrieve today's QR."""
-    qr = DailyQR.get_today()
-    if not qr:
-        return Response({"detail": "No QR generated for today."}, status=status.HTTP_404_NOT_FOUND)
+    """
+    GET /api/admin/today-qr – Retrieve today's QR.
+    Automatically handles midnight transition refresh if old QR is stale.
+    """
+    # Force evaluation and creation if date changed past midnight local time
+    qr, created = DailyQR.generate_for_today(created_by=request.user)
+    
+    if not qr or not qr.is_active:
+        return Response({"detail": "No active QR generated for today."}, status=status.HTTP_404_NOT_FOUND)
+        
     return Response(DailyQRSerializer(qr).data)
 
 

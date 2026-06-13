@@ -30,7 +30,7 @@ function OverviewPanel() {
   });
 
   return (
-    <div>
+    <div className="overflow-hidden">
       <h2 className="text-xl md:text-2xl font-black mb-5">Dashboard Overview</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <StatCard label="Total Customers" value={data?.total_customers} />
@@ -62,6 +62,9 @@ function QRPanel() {
       }
       return res.data;
     },
+    staleTime: 0,             // Never serve cached data when initializing panel
+    refetchOnWindowFocus: true, // Auto check for midnight date mutations when tab changes
+    refetchInterval: 30000,    // Poll every 30 seconds to refresh instantly at 12:00 AM local time
   });
 
   const { mutate: generateQR, isPending } = useMutation({
@@ -231,7 +234,6 @@ function MenuPanel() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["menuAll"] }); toast.success("Item deleted"); },
   });
 
-  // Updated custom fallback menu array mapped directly into view
   const customFallbackItems = [
     { id: 1, name: "Daliche Appe", description: "Nutritious traditional lentil dumplings", price: "30", available: true },
     { id: 2, name: "Corn Appe", description: "Steamed savory dumplings packed with sweet corn", price: "35", available: true },
