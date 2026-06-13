@@ -86,14 +86,27 @@ if not DATABASES["default"]:
     }
 
 # ── Cache / Redis ─────────────────────────────────────────────────────────────
-REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": REDIS_URL,
-        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+import os
+
+# Uses standard in-memory caching on production (Render) so it never crashes!
+if 'render' in os.environ.get('RENDER_EXTERNAL_URL', ''):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "bitestreak-cache-fallback",
+        }
     }
-}
+else:
+    # Keeps your local Redis active when working on your own machine
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": "redis://127.0.0.1:6379/1",
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            }
+        }
+    }
 
 # ── Celery ────────────────────────────────────────────────────────────────────
 CELERY_BROKER_URL = REDIS_URL
