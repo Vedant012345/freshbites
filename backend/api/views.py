@@ -191,7 +191,7 @@ def generate_qr_view(request):
     """POST /api/admin/generate-qr – Generate today's QR code."""
     today = timezone.localdate()
     
-    # Check if active QR for the local target date already exists to prevent duplicates
+    # Check if active QR for the local target date already exists
     qr = DailyQR.objects.filter(qr_date=today, is_active=True).first()
     created = False
     
@@ -256,7 +256,7 @@ def customer_claim_reward_view(request):
         reward.claim()
         return Response(RewardSerializer(reward).data)
     except Reward.DoesNotExist:
-        return Response({"detail": "Reward not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"detail": "Reward not found."}, status=status.HTTP_444_NOT_FOUND)
     except ValueError as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
