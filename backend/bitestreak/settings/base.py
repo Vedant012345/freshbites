@@ -3,10 +3,11 @@ import dj_database_url
 import environ
 from pathlib import Path
 from datetime import timedelta
+
 # Inside settings.py
 
 # 1. Change this from 'UTC' to your actual region's timezone
-TIME_ZONE = 'Asia/Kolkata'  # Sets the system midnight clock to Indian Standard
+TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = True
 
