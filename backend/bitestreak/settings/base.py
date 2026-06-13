@@ -39,7 +39,7 @@ INSTALLED_APPS = [
 
 # ── Middleware — corsheaders MUST be first ────────────────────────────────────
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",          # <-- MUST be #1
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -109,15 +109,15 @@ else:
         }
     }
 
-# ── Celery Config ─────────────────────────────────────────────────────────────
+# ── Celery Config (Bypasses Redis on Render) ──────────────────────────────────
 if IS_RENDER:
-    # Production: Runs tasks synchronously in memory so background workers don't drop out
+    # Production: Runs tasks synchronously in memory so background registrations don't drop out
     CELERY_BROKER_URL = 'memory://'
     CELERY_RESULT_BACKEND = 'cache+memory://'
     CELERY_TASK_ALWAYS_EAGER = True
     CELERY_TASK_EAGER_PROPAGATES = True
 else:
-    # Local Development: Routing tasks through Redis
+    # Local Development: Routing tasks through local Redis instance
     CELERY_BROKER_URL = REDIS_URL
     CELERY_RESULT_BACKEND = REDIS_URL
     CELERY_TASK_ALWAYS_EAGER = False
@@ -194,6 +194,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # ── Security (production only) ────────────────────────────────────────────────
 if not DEBUG:
+    # Render manages SSL termination; fallback settings handle secure app delivery
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_SSL_REDIRECT = True
