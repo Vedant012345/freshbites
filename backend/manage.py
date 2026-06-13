@@ -5,6 +5,7 @@ import sys
 
 
 def main():
+    # Points cleanly to your split settings directory (bitestreak/settings/base.py)
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "bitestreak.settings.base")
     try:
         from django.core.management import execute_from_command_line
