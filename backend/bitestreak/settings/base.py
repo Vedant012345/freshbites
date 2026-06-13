@@ -1,10 +1,10 @@
-import environ
 import os
+import dj_database_url
+import environ
 from pathlib import Path
 from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-CORS_ALLOW_CREDENTIALS = True
 env = environ.Env(DEBUG=(bool, False))
 environ.Env.read_env(BASE_DIR / ".env")
 
@@ -71,7 +71,6 @@ TEMPLATES = [
 ]
 
 # ── Database ──────────────────────────────────────────────────────────────────
-import dj_database_url
 DATABASES = {
     "default": dj_database_url.config(
         default=os.environ.get("DATABASE_URL"),
@@ -85,11 +84,13 @@ if not DATABASES["default"]:
         "NAME": BASE_DIR / "db.sqlite3",
     }
 
-# ── Cache / Redis ─────────────────────────────────────────────────────────────
-import os
+# ── Environment Environment Detection ─────────────────────────────────────────
+IS_RENDER = os.environ.get('RENDER') or 'render' in os.environ.get('RENDER_EXTERNAL_URL', '')
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1')
 
-# Uses standard in-memory caching on production (Render) so it never crashes!
-if 'render' in os.environ.get('RENDER_EXTERNAL_URL', ''):
+# ── Cache Config ──────────────────────────────────────────────────────────────
+if IS_RENDER:
+    # Production: Uses in-memory cache to fully bypass Redis container dependency
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -97,20 +98,30 @@ if 'render' in os.environ.get('RENDER_EXTERNAL_URL', ''):
         }
     }
 else:
-    # Keeps your local Redis active when working on your own machine
+    # Local Development: Keeps local Redis active
     CACHES = {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": "redis://127.0.0.1:6379/1",
+            "LOCATION": REDIS_URL,
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
             }
         }
     }
 
-# ── Celery ────────────────────────────────────────────────────────────────────
-CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL
+# ── Celery Config ─────────────────────────────────────────────────────────────
+if IS_RENDER:
+    # Production: Runs tasks synchronously in memory so background workers don't drop out
+    CELERY_BROKER_URL = 'memory://'
+    CELERY_RESULT_BACKEND = 'cache+memory://'
+    CELERY_TASK_ALWAYS_EAGER = True
+    CELERY_TASK_EAGER_PROPAGATES = True
+else:
+    # Local Development: Routing tasks through Redis
+    CELERY_BROKER_URL = REDIS_URL
+    CELERY_RESULT_BACKEND = REDIS_URL
+    CELERY_TASK_ALWAYS_EAGER = False
+
 CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULE = {
     "expire-daily-qr": {
@@ -120,7 +131,6 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
-from datetime import timedelta
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
@@ -144,14 +154,13 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
 }
 
-# ── CORS — single definition, accepts Vercel + localhost ─────────────────────
+# ── CORS — Accepts Vercel Prod/Previews + Localhost ───────────────────────────
 CORS_ALLOWED_ORIGINS = [
     "https://helthybites-frontend.vercel.app",
     "https://freshbites-backend-c6vd.onrender.com",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
-# Also allow any Vercel preview deployment URLs
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://helthybites-.*\.vercel\.app$",
 ]
