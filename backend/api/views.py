@@ -56,7 +56,7 @@ class RegisterView(generics.CreateAPIView):
                 "refresh": str(refresh),
             },
             status=status.HTTP_201_CREATED,
-            )
+        )
 
 
 class LoginView(TokenObtainPairView):
@@ -171,20 +171,33 @@ def admin_stats_view(request):
     return Response(data)
 
 
+@api_view(["GET"])
+@permission_classes([IsAdmin])
+def admin_customers_view(request):
+    """GET /api/admin/customers – Customer list with stats."""
+    search = request.query_params.get("search", "")
+    customers = User.objects.filter(role="customer")
+    if search:
+        customers = customers.filter(name__icontains=search) | customers.filter(
+            mobile_number__icontains=search
+        )
+    serializer = CustomerSummarySerializer(customers, many=True)
+    return Response(serializer.data)
+
+
 @api_view(["POST"])
 @permission_classes([IsAdmin])
 def generate_qr_view(request):
     """POST /api/admin/generate-qr – Generate today's QR code."""
     today = timezone.localdate()
     
-    # Check if active QR for the local target date already exists to prevent duplicate generation rows
+    # Check if active QR for the local target date already exists to prevent duplicates
     qr = DailyQR.objects.filter(qr_date=today, is_active=True).first()
     created = False
     
     if not qr:
         qr, created = DailyQR.generate_for_today(created_by=request.user)
-        # Explicit override catch to ensure model assignment cannot save back into UTC date shapes
-        if qr.qr_date != today:
+        if qr and qr.qr_date != today:
             qr.qr_date = today
             qr.save(update_fields=["qr_date"])
             
@@ -215,20 +228,6 @@ def today_qr_view(request):
         return Response({"detail": "No active QR generated for today."}, status=status.HTTP_404_NOT_FOUND)
         
     return Response(DailyQRSerializer(qr).data)
-
-
-@api_view(["GET"])
-@permission_classes([IsAdmin])
-def admin_customers_view(request):
-    """GET /api/admin/customers – Customer list with stats."""
-    search = request.query_params.get("search", "")
-    customers = User.objects.filter(role="customer")
-    if search:
-        customers = customers.filter(name__icontains=search) | customers.filter(
-            mobile_number__icontains=search
-        )
-    serializer = CustomerSummarySerializer(customers, many=True)
-    return Response(serializer.data)
 
 
 @api_view(["POST"])
