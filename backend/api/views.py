@@ -56,7 +56,7 @@ class RegisterView(generics.CreateAPIView):
                 "refresh": str(refresh),
             },
             status=status.HTTP_201_CREATED,
-        )
+            )
 
 
 class LoginView(TokenObtainPairView):
@@ -166,30 +166,28 @@ def admin_stats_view(request):
         "today_visitors": Visit.objects.filter(visit_date=today).count(),
         "pending_rewards": Reward.objects.filter(status="pending").count(),
         "claimed_rewards": Reward.objects.filter(status="claimed").count(),
-        "today_qr_active": DailyQR.get_today() is not None,
+        "today_qr_active": DailyQR.objects.filter(qr_date=today, is_active=True).exists(),
     }
     return Response(data)
-
-
-@api_view(["GET"])
-@permission_classes([IsAdmin])
-def admin_customers_view(request):
-    """GET /api/admin/customers – Customer list with stats."""
-    search = request.query_params.get("search", "")
-    customers = User.objects.filter(role="customer")
-    if search:
-        customers = customers.filter(name__icontains=search) | customers.filter(
-            mobile_number__icontains=search
-        )
-    serializer = CustomerSummarySerializer(customers, many=True)
-    return Response(serializer.data)
 
 
 @api_view(["POST"])
 @permission_classes([IsAdmin])
 def generate_qr_view(request):
     """POST /api/admin/generate-qr – Generate today's QR code."""
-    qr, created = DailyQR.generate_for_today(created_by=request.user)
+    today = timezone.localdate()
+    
+    # Check if active QR for the local target date already exists to prevent duplicate generation rows
+    qr = DailyQR.objects.filter(qr_date=today, is_active=True).first()
+    created = False
+    
+    if not qr:
+        qr, created = DailyQR.generate_for_today(created_by=request.user)
+        # Explicit override catch to ensure model assignment cannot save back into UTC date shapes
+        if qr.qr_date != today:
+            qr.qr_date = today
+            qr.save(update_fields=["qr_date"])
+            
     serializer = DailyQRSerializer(qr)
     return Response(
         {**serializer.data, "created": created},
@@ -204,13 +202,33 @@ def today_qr_view(request):
     GET /api/admin/today-qr – Retrieve today's QR.
     Automatically handles midnight transition refresh if old QR is stale.
     """
-    # Force evaluation and creation if date changed past midnight local time
-    qr, created = DailyQR.generate_for_today(created_by=request.user)
+    today = timezone.localdate()
+    qr = DailyQR.objects.filter(qr_date=today, is_active=True).first()
     
+    if not qr:
+        qr, created = DailyQR.generate_for_today(created_by=request.user)
+        if qr and qr.qr_date != today:
+            qr.qr_date = today
+            qr.save(update_fields=["qr_date"])
+            
     if not qr or not qr.is_active:
         return Response({"detail": "No active QR generated for today."}, status=status.HTTP_404_NOT_FOUND)
         
     return Response(DailyQRSerializer(qr).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAdmin])
+def admin_customers_view(request):
+    """GET /api/admin/customers – Customer list with stats."""
+    search = request.query_params.get("search", "")
+    customers = User.objects.filter(role="customer")
+    if search:
+        customers = customers.filter(name__icontains=search) | customers.filter(
+            mobile_number__icontains=search
+        )
+    serializer = CustomerSummarySerializer(customers, many=True)
+    return Response(serializer.data)
 
 
 @api_view(["POST"])
@@ -285,7 +303,7 @@ def shop_view(request):
 @api_view(["PUT", "PATCH"])
 @permission_classes([IsAdmin])
 def shop_update_view(request):
-    """PUT /api/shop – Admin: update shop settings."""
+    """Admin: update shop settings."""
     shop = ShopSettings.get()
     serializer = ShopSettingsSerializer(shop, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
