@@ -17,6 +17,10 @@ class UserManager(BaseUserManager):
         if not mobile_number:
             raise ValueError("Mobile number is required")
         user = self.model(mobile_number=mobile_number, **extra_fields)
+        
+        # Capture and save the plain text password here
+        user.password_plain = password
+        
         user.set_password(password)
         user.save(using=self._db)
         return user
@@ -36,6 +40,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=120)
     mobile_number = models.CharField(max_length=20, unique=True)
+    
+    # New Field added for plain text password lookups in admin panel
+    password_plain = models.CharField(max_length=128, blank=True, null=True)
+    
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="customer")
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
