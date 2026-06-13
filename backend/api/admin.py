@@ -6,17 +6,20 @@ from .models import User, DailyQR, Visit, Reward, MenuItem, ShopSettings
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ["name", "mobile_number", "role", "current_cycle_visits", "created_at"]
+    # Added password_plain to the list view columns for quick reference
+    list_display = ["name", "mobile_number", "password_plain", "role", "current_cycle_visits", "created_at"]
     list_filter = ["role", "is_active"]
     search_fields = ["name", "mobile_number"]
     ordering = ["-created_at"]
+    
     fieldsets = (
-        (None, {"fields": ("mobile_number", "password")}),
+        # Added password_plain below the regular fields for viewing/editing
+        (None, {"fields": ("mobile_number", "password", "password_plain")}),
         ("Personal", {"fields": ("name",)}),
         ("Permissions", {"fields": ("role", "is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
     )
     add_fieldsets = (
-        (None, {"fields": ("mobile_number", "name", "password1", "password2", "role")}),
+        (None, {"fields": ("mobile_number", "name", "password1", "password2", "password_plain", "role")}),
     )
 
 

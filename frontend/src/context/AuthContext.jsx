@@ -8,11 +8,27 @@ import { authService } from "../services/api";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => authService.getUser());
+  // ── Safe State Initialization ──────────────────────────────────────────────
+  const [user, setUser] = useState(() => {
+    try {
+      // Safely attempt to read the user state from authService
+      const storedUser = authService.getUser();
+      
+      // If it evaluates to an unexpected data state or string, clear it gracefully
+      if (!storedUser || storedUser === "undefined" || storedUser === "null") {
+        return null;
+      }
+      return storedUser;
+    } catch (error) {
+      console.error("AuthContext Initialization Error: Failed to parse user session.", error);
+      // Fallback state so the app doesn't crash to a black screen
+      return null;
+    }
+  });
 
   const login = useCallback(async (credentials) => {
     const data = await authService.login(credentials);
-    setUser(data.user);
+    setUser(data?.user || null);
     return data;
   }, []);
 
@@ -23,13 +39,19 @@ export function AuthProvider({ children }) {
       mobile_number: credentials.mobile_number,
       password: credentials.password,
     });
-    setUser(loginData.user);
+    setUser(loginData?.user || null);
     return loginData;
   }, []);
 
   const logout = useCallback(async () => {
-    await authService.logout();
-    setUser(null);
+    try {
+      await authService.logout();
+    } catch (err) {
+      console.error("Logout request failed:", err);
+    } finally {
+      // Always clear user state even if the backend logout endpoint errors out
+      setUser(null);
+    }
   }, []);
 
   const isAdmin = user?.role === "admin";

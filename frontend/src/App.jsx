@@ -32,23 +32,36 @@ function ProtectedRoute({ children, adminOnly = false }) {
 
 // ─── Landing Page ─────────────────────────────────────────────────────────────
 function LandingPage() {
-  const { data: shop } = useQuery({
+  const { data: shop, isLoading: isShopLoading } = useQuery({
     queryKey: ["shop"],
-    queryFn: () => shopService.getShop().then((r) => r.data),
-  });
-  const { data: menu } = useQuery({
-    queryKey: ["menu"],
-    queryFn: () => menuService.getMenu().then((r) => r.data),
+    queryFn: () => shopService.getShop().then((r) => r?.data || null).catch(() => null),
   });
 
   const shopName = shop?.shop_name || "Streak Bites";
   const isOpen = shop?.is_currently_open ?? true;
 
-  const fallbackMenu = [
-    { id: 1, name: "Volt Burger", description: "Smoked wagyu, aged cheddar", price: "12.99" },
-    { id: 2, name: "Streak Wings", description: "Honey-habanero glaze", price: "10.50" },
-    { id: 3, name: "Nitro Fuel", description: "18-hr cold brew + nitrogen", price: "5.50" },
+  // Your requested menu items enforced directly on the UI
+  const enforcedMenu = [
+    { id: 1, name: "Daliche Appe", description: "Traditional nutritious lentil dumplings", price: "30" },
+    { id: 2, name: "Corn Appe", description: "Steamed dumplings filled with sweet corn kernels", price: "35" },
+    { id: 3, name: "Cheese Appe", description: "Appe stuffed with a melted cheese center", price: "45" },
+    { id: 4, name: "Classic Avocado Toast", description: "Freshly crushed seasoned avocado on crisp toast", price: "39" },
+    { id: 5, name: "Cheese Avocado Toast", description: "Crisp avocado toast topped with loaded cheese flakes", price: "49" },
+    { id: 6, name: "Plain Coconut Milk (Regular)", description: "Fresh extract served in a regular glass", price: "25" },
+    { id: 7, name: "Plain Coconut Milk (Big)", description: "Fresh extract served in a large sharing glass", price: "40" },
+    { id: 8, name: "Chia Coconut Milk (Regular)", description: "Infused with nutrient-dense soaked chia seeds", price: "30" },
+    { id: 9, name: "Chia Coconut Milk (Big)", description: "Infused with nutrient-dense soaked chia seeds", price: "45" },
+    { id: 10, name: "Sabja Coconut Milk (Regular)", description: "Cooling beverage infused with natural sweet basil seeds", price: "30" },
+    { id: 11, name: "Sabja Coconut Milk (Big)", description: "Cooling beverage infused with natural sweet basil seeds", price: "45" },
   ];
+
+  if (isShopLoading) {
+    return (
+      <div className="min-h-screen bg-[#0b1326] flex items-center justify-center text-white">
+        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0b1326] text-white">
@@ -64,15 +77,15 @@ function LandingPage() {
       </header>
 
       <main className="max-w-md mx-auto px-5 pb-16 pt-6 flex flex-col gap-5">
-        {/* Open/Closed badge */}
         <div className="flex justify-center">
-          <span className={`flex items-center gap-2 text-xs font-bold px-4 py-1.5 rounded-full border ${isOpen ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" : "text-red-400 border-red-500/30 bg-red-500/10"}`}>
-            <span className={`w-2 h-2 rounded-full animate-pulse ${isOpen ? "bg-emerald-400" : "bg-red-400"}`} />
-            {isOpen ? "OPEN NOW" : "CLOSED NOW"} · {shop?.open_time || "10:00"} – {shop?.close_time || "22:00"}
-          </span>
+          <div className="flex justify-center">
+  <span className={`flex items-center gap-2 text-xs font-bold px-4 py-1.5 rounded-full border ${isOpen ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" : "text-red-400 border-red-500/30 bg-red-500/10"}`}>
+    <span className={`w-2 h-2 rounded-full animate-pulse ${isOpen ? "bg-emerald-400" : "bg-red-400"}`} />
+    {isOpen ? "OPEN NOW" : "CLOSED NOW"} · 6:00 AM – 10:00 AM
+  </span>
+</div>
         </div>
 
-        {/* Hero card */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="bg-white/5 border border-white/10 rounded-3xl p-7 text-center">
           <h1 className="text-3xl font-black leading-tight mb-3">
@@ -93,10 +106,9 @@ function LandingPage() {
           </Link>
         </motion.div>
 
-        {/* Steps */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { emoji: "🍔", label: "ORDER", desc: "Get your favorite bite" },
+            { emoji: "🥑", label: "ORDER", desc: "Get your favorite bite" },
             { emoji: "📲", label: "SCAN",  desc: "Daily QR at counter" },
             { emoji: "🏆", label: "WIN",   desc: "Free food at 7 days" },
           ].map((s) => (
@@ -108,24 +120,23 @@ function LandingPage() {
           ))}
         </div>
 
-        {/* Menu */}
+        {/* Updated Menu Section */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
           <h2 className="text-lg font-black mb-4">Today's <span className="grad-text">Top Bites</span></h2>
           <div className="flex flex-col gap-3">
-            {(menu || fallbackMenu).map((item) => (
+            {enforcedMenu.map((item) => (
               <div key={item.id}
                 className="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
                 <div>
                   <p className="font-bold text-sm">{item.name}</p>
                   <p className="text-xs text-white/40 mt-0.5">{item.description}</p>
                 </div>
-                <span className="text-orange-500 font-black text-sm">${item.price}</span>
+                <span className="text-orange-500 font-black text-sm">₹{item.price}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Contact */}
         <div className="text-center text-sm text-white/40 flex flex-col gap-1">
           {shop?.address && <p>📍 {shop.address}</p>}
           {shop?.phone && <p>📞 {shop.phone}</p>}
@@ -135,7 +146,6 @@ function LandingPage() {
     </div>
   );
 }
-
 // ─── Login Page ───────────────────────────────────────────────────────────────
 function LoginPage() {
   const { login } = useAuth();

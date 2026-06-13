@@ -4,7 +4,7 @@
  */
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import QRCode from "qrcode";
 import toast from "react-hot-toast";
 import { adminService, menuService, shopService } from "../services/api";
@@ -12,18 +12,16 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 // ─── Stat Card ───────────────────────────────────────────────────────────────
-
 function StatCard({ label, value, color = "text-orange-500" }) {
   return (
     <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
       <p className="text-xs font-bold tracking-widest text-white/40 uppercase">{label}</p>
-      <p className={`text-3xl font-black mt-1 ${color}`}>{value ?? "—"}</p>
+      <p className={`text-2xl md:text-3xl font-black mt-1 ${color}`}>{value ?? "—"}</p>
     </div>
   );
 }
 
 // ─── PANELS ───────────────────────────────────────────────────────────────────
-
 function OverviewPanel() {
   const { data } = useQuery({
     queryKey: ["adminStats"],
@@ -33,8 +31,8 @@ function OverviewPanel() {
 
   return (
     <div>
-      <h2 className="text-2xl font-black mb-5">Dashboard Overview</h2>
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <h2 className="text-xl md:text-2xl font-black mb-5">Dashboard Overview</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <StatCard label="Total Customers" value={data?.total_customers} />
         <StatCard label="Today's Visitors" value={data?.today_visitors} color="text-amber-400" />
         <StatCard label="Total Visits" value={data?.total_visits} color="text-emerald-400" />
@@ -89,8 +87,8 @@ function QRPanel() {
 
   return (
     <div>
-      <h2 className="text-2xl font-black mb-5">QR Code Management</h2>
-      <div className="grid grid-cols-2 gap-5">
+      <h2 className="text-xl md:text-2xl font-black mb-5">QR Code Management</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div className="bg-white/5 border border-orange-500/30 rounded-2xl p-5">
           <div className="flex justify-between items-center mb-4">
             <p className="font-black text-base">Today's QR Code</p>
@@ -146,37 +144,39 @@ function CustomersPanel() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-5">
-        <h2 className="text-2xl font-black">Customers</h2>
+      <div className="flex flex-col sm:flex-row gap-3 justify-between sm:items-center mb-5">
+        <h2 className="text-xl md:text-2xl font-black">Customers</h2>
         <input
-          className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-orange-500"
+          className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-orange-500 w-full sm:w-auto"
           placeholder="Search customers…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-        <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr] px-4 py-3 border-b border-white/10 text-xs font-bold tracking-wider text-white/40 uppercase">
-          <span>Customer</span><span>Mobile</span><span>Visits</span><span>Rewards</span><span>Last Visit</span>
-        </div>
-        {validCustomers.length ? (
-          validCustomers.map((c) => (
-            <div key={c.id} className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr] px-4 py-3 border-b border-white/5 items-center">
-              <span className="text-sm font-semibold">{c.name}</span>
-              <span className="text-xs text-white/50">{c.mobile_number}</span>
-              <div>
-                <span className="text-sm font-bold text-orange-500">{c.current_cycle_visits}/7</span>
-                <div className="h-1 bg-white/5 rounded-full mt-1 w-16">
-                  <div className="h-full bg-orange-500 rounded-full" style={{ width: `${(c.current_cycle_visits / 7) * 100}%` }} />
+      <div className="bg-white/5 border border-white/10 rounded-2xl overflow-x-auto whitespace-nowrap">
+        <div className="min-w-[600px]">
+          <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr] px-4 py-3 border-b border-white/10 text-xs font-bold tracking-wider text-white/40 uppercase">
+            <span>Customer</span><span>Mobile</span><span>Visits</span><span>Rewards</span><span>Last Visit</span>
+          </div>
+          {validCustomers.length ? (
+            validCustomers.map((c) => (
+              <div key={c.id} className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr] px-4 py-3 border-b border-white/5 items-center">
+                <span className="text-sm font-semibold text-white truncate pr-2">{c.name}</span>
+                <span className="text-xs text-white/50">{c.mobile_number}</span>
+                <div>
+                  <span className="text-sm font-bold text-orange-500">{c.current_cycle_visits}/7</span>
+                  <div className="h-1 bg-white/5 rounded-full mt-1 w-16">
+                    <div className="h-full bg-orange-500 rounded-full" style={{ width: `${(c.current_cycle_visits / 7) * 100}%` }} />
+                  </div>
                 </div>
+                <span className="text-sm text-emerald-400 font-bold">{c.rewards_earned}</span>
+                <span className="text-xs text-white/40">{c.last_visit || "—"}</span>
               </div>
-              <span className="text-sm text-emerald-400 font-bold">{c.rewards_earned}</span>
-              <span className="text-xs text-white/40">{c.last_visit || "—"}</span>
-            </div>
-          ))
-        ) : (
-          <p className="text-sm text-white/30 text-center py-6">No customers found.</p>
-        )}
+            ))
+          ) : (
+            <p className="text-sm text-white/30 text-center py-6">No customers found.</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -197,20 +197,20 @@ function RewardsPanel() {
 
   return (
     <div>
-      <h2 className="text-2xl font-black mb-5">Reward Management</h2>
+      <h2 className="text-xl md:text-2xl font-black mb-5">Reward Management</h2>
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
         <div className="px-4 py-3 border-b border-white/10 text-xs font-bold tracking-wider text-white/40 uppercase">
           Active Pending Rewards
         </div>
         <div className="p-4 text-sm text-white/40 text-center">
           Use Admin → Claim Reward with a reward code from a customer to mark it claimed.
-          <div className="mt-4 flex gap-3">
-            <input id="rcode" placeholder="BITE-XXXXXXXX" className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-white/30 outline-none focus:border-orange-500 text-sm" />
+          <div className="mt-4 flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+            <input id="rcode" placeholder="BITE-XXXXXXXX" className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-white placeholder-white/30 outline-none focus:border-orange-500 text-sm" />
             <button
               onClick={() => { const v = document.getElementById("rcode")?.value; if (v) claimReward(v); }}
-              className="bg-orange-500 text-white font-bold px-4 py-2 rounded-xl text-sm"
+              className="bg-orange-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-opacity active:opacity-80"
             >
-              Claim
+              Claim Reward
             </button>
           </div>
         </div>
@@ -231,24 +231,39 @@ function MenuPanel() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["menuAll"] }); toast.success("Item deleted"); },
   });
 
-  const validItems = Array.isArray(items) ? items : [];
+  // Updated custom fallback menu array mapped directly into view
+  const customFallbackItems = [
+    { id: 1, name: "Daliche Appe", description: "Nutritious traditional lentil dumplings", price: "30", available: true },
+    { id: 2, name: "Corn Appe", description: "Steamed savory dumplings packed with sweet corn", price: "35", available: true },
+    { id: 3, name: "Cheese Appe", description: "Appe stuffed with a molten cheese center", price: "45", available: true },
+    { id: 4, name: "Classic Avocado Toast", description: "Seasoned crushed fresh avocado on toast", price: "39", available: true },
+    { id: 5, name: "Cheese Avocado Toast", description: "Avocado toast loaded with grated cheese flakes", price: "49", available: true },
+    { id: 6, name: "Plain Coconut Milk (Regular)", description: "Fresh extract served in a regular glass", price: "25", available: true },
+    { id: 7, name: "Plain Coconut Milk (Big)", description: "Fresh extract served in a large sharing glass", price: "40", available: true },
+    { id: 8, name: "Chia Coconut Milk (Regular)", description: "Infused with nutrient-dense soaked chia seeds", price: "30", available: true },
+    { id: 9, name: "Chia Coconut Milk (Big)", description: "Infused with nutrient-dense soaked chia seeds", price: "45", available: true },
+    { id: 10, name: "Sabja Coconut Milk (Regular)", description: "Refreshing extract mixed with sweet basil seeds", price: "30", available: true },
+    { id: 11, name: "Sabja Coconut Milk (Big)", description: "Refreshing extract mixed with sweet basil seeds", price: "45", available: true },
+  ];
+
+  const validItems = Array.isArray(items) && items.length > 0 ? items : customFallbackItems;
 
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
-        <h2 className="text-2xl font-black">Menu Items</h2>
+        <h2 className="text-xl md:text-2xl font-black">Menu Items</h2>
         <button onClick={() => toast("Add item modal – wire to backend!")} className="bg-orange-500 text-white font-bold text-sm px-4 py-2 rounded-xl">+ Add Item</button>
       </div>
       <div className="flex flex-col gap-3">
         {validItems.length ? (
           validItems.map((item) => (
-            <div key={item.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex justify-between items-center">
+            <div key={item.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
               <div>
                 <p className="font-bold">{item.name}</p>
                 <p className="text-xs text-white/40 mt-0.5">{item.description}</p>
-                <p className="text-orange-500 font-black text-sm mt-1">${item.price}</p>
+                <p className="text-orange-500 font-black text-sm mt-1">₹{item.price}</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between sm:justify-end gap-2">
                 <span className={`text-xs font-bold px-2 py-1 rounded-full border ${item.available ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" : "text-orange-400 border-orange-500/30 bg-orange-500/10"}`}>
                   {item.available ? "Available" : "Unavailable"}
                 </span>
@@ -270,7 +285,6 @@ function MenuPanel() {
 }
 
 // ─── Main Admin Shell ─────────────────────────────────────────────────────────
-
 const PANELS = [
   { id: "overview", label: "Overview", icon: "dashboard" },
   { id: "qr", label: "QR Code", icon: "qr_code" },
@@ -281,6 +295,7 @@ const PANELS = [
 
 export default function AdminDashboard() {
   const [active, setActive] = useState("overview");
+  const [isMobileOpen, setIsMobileOpen] = useState(false); // Mobile Menu State
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -300,18 +315,27 @@ export default function AdminDashboard() {
     }
   };
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-[#0b1326] text-white">
-      {/* Sidebar */}
-      <aside className="w-52 min-w-52 bg-[#060e20]/90 border-r border-white/10 flex flex-col gap-1 p-3">
-        <div className="px-2 py-3 mb-2">
+  // Shared inner contents of sidebar navigation
+  const SidebarContents = () => (
+    <>
+      <div className="px-2 py-3 mb-2 flex justify-between items-center">
+        <div>
           <p className="text-base font-black bg-gradient-to-br from-[#ffb693] to-[#ff6b00] bg-clip-text text-transparent">STREAK BITES</p>
           <p className="text-xs text-white/30 mt-0.5">Admin Console</p>
         </div>
+        {/* Mobile close chevron inside the sidebar overlay */}
+        <button onClick={() => setIsMobileOpen(false)} className="md:hidden text-white/40 hover:text-white">
+          <span className="material-symbols-outlined text-[22px]">close</span>
+        </button>
+      </div>
+      <div className="flex flex-col gap-1">
         {PANELS.map((p) => (
           <button
             key={p.id}
-            onClick={() => setActive(p.id)}
+            onClick={() => {
+              setActive(p.id);
+              setIsMobileOpen(false); // auto close layout container drawer on select
+            }}
             className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
               active === p.id
                 ? "bg-orange-500/10 text-orange-500"
@@ -322,18 +346,71 @@ export default function AdminDashboard() {
             {p.label}
           </button>
         ))}
-        <div className="mt-auto">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-white/40 hover:text-white hover:bg-white/5 w-full"
+      </div>
+      <div className="mt-auto pt-4">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-white/40 hover:text-white hover:bg-white/5 w-full"
+        >
+          <span className="material-symbols-outlined text-[18px]">logout</span> Logout
+        </button>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#0b1326] text-white flex-col md:flex-row">
+      
+      {/* ─── MOBILE TOP HEADER ACTION BAR ─────────────────────────────────────── */}
+      <header className="flex md:hidden items-center justify-between px-5 h-16 bg-[#060e20]/90 border-b border-white/10 z-30">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsMobileOpen(true)}
+            className="w-10 h-10 flex items-center justify-center bg-white/5 border border-white/10 rounded-xl active:bg-white/10 text-orange-500"
           >
-            <span className="material-symbols-outlined text-[18px]">logout</span> Logout
+            <span className="material-symbols-outlined text-[24px]">menu</span>
           </button>
+          <div>
+            <p className="text-sm font-black tracking-tight text-white">STREAK BITES</p>
+            <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider">{active}</p>
+          </div>
         </div>
+        <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-amber-400 rounded-full flex items-center justify-center text-sm">🔥</div>
+      </header>
+
+      {/* ─── DESKTOP PERSISTENT SIDEBAR ──────────────────────────────────────── */}
+      <aside className="hidden md:flex w-52 min-w-52 bg-[#060e20]/90 border-r border-white/10 flex-col gap-1 p-3">
+        <SidebarContents />
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6">
+      {/* ─── MOBILE INTERACTIVE DRAWER CONTAINER OVERLAY ─────────────────────── */}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <>
+            {/* Dark Backdrop dim screen filter */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileOpen(false)}
+              className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+            />
+            {/* Sliding navigation drawer menu drawer */}
+            <motion.aside 
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 left-0 w-64 bg-[#060e20] z-50 p-4 border-r border-white/10 flex flex-col gap-1 md:hidden"
+            >
+              <SidebarContents />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ─── MAIN APP ROUTER CORE WORKSPACE PANEL ───────────────────────────── */}
+      <main className="flex-1 overflow-y-auto p-4 md:p-6">
         <motion.div
           key={active}
           initial={{ opacity: 0, y: 8 }}
