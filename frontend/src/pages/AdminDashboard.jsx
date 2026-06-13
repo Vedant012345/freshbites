@@ -73,8 +73,9 @@ function QRPanel() {
       if (res.data?.token) {
         const img = await QRCode.toDataURL(res.data.token, { width: 200, margin: 2, color: { dark: "#000", light: "#fff" } });
         setQrImage(img);
+        queryClient.setQueryData(["todayQR"], res.data);
       }
-      queryClient.invalidateQueries({ queryKey: ["todayQR", "adminStats"] });
+      queryClient.invalidateQueries({ queryKey: ["adminStats"] });
       toast.success("QR Code generated!");
     },
     onError: () => toast.error("Failed to generate QR"),
