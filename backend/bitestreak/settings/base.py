@@ -84,7 +84,7 @@ if not DATABASES["default"]:
         "NAME": BASE_DIR / "db.sqlite3",
     }
 
-# ── Environment Environment Detection ─────────────────────────────────────────
+# ── Environment Detection ─────────────────────────────────────────────────────
 IS_RENDER = os.environ.get('RENDER') or 'render' in os.environ.get('RENDER_EXTERNAL_URL', '')
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1')
 

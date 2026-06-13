@@ -58,8 +58,10 @@ function QRPanel() {
     queryKey: ["todayQR"],
     queryFn: async () => {
       const res = await adminService.getTodayQR();
-      const img = await QRCode.toDataURL(res.data.token, { width: 200, margin: 2, color: { dark: "#000", light: "#fff" } });
-      setQrImage(img);
+      if (res.data?.token) {
+        const img = await QRCode.toDataURL(res.data.token, { width: 200, margin: 2, color: { dark: "#000", light: "#fff" } });
+        setQrImage(img);
+      }
       return res.data;
     },
   });
@@ -67,8 +69,10 @@ function QRPanel() {
   const { mutate: generateQR, isPending } = useMutation({
     mutationFn: adminService.generateQR,
     onSuccess: async (res) => {
-      const img = await QRCode.toDataURL(res.data.token, { width: 200, margin: 2, color: { dark: "#000", light: "#fff" } });
-      setQrImage(img);
+      if (res.data?.token) {
+        const img = await QRCode.toDataURL(res.data.token, { width: 200, margin: 2, color: { dark: "#000", light: "#fff" } });
+        setQrImage(img);
+      }
       queryClient.invalidateQueries({ queryKey: ["todayQR", "adminStats"] });
       toast.success("QR Code generated!");
     },
@@ -79,7 +83,7 @@ function QRPanel() {
     if (!qrImage) return;
     const a = document.createElement("a");
     a.href = qrImage;
-    a.download = `bitestreak-qr-${qrData?.qr_date}.png`;
+    a.download = `bitestreak-qr-${qrData?.qr_date || "today"}.png`;
     a.click();
   };
 
@@ -104,7 +108,7 @@ function QRPanel() {
             </div>
           )}
           <p className="text-xs text-white/40 text-center mb-1">Date: {qrData?.qr_date || "—"}</p>
-          <p className="text-xs text-white/30 text-center break-all mb-4">Token: {qrData?.token?.slice(0, 32)}…</p>
+          <p className="text-xs text-white/30 text-center break-all mb-4">Token: {qrData?.token ? `${qrData.token.slice(0, 32)}…` : "—"}</p>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={downloadQR} className="bg-white/10 border border-white/10 text-sm font-semibold py-2 rounded-xl">⬇ Download</button>
             <button onClick={() => window.print()} className="bg-white/10 border border-white/10 text-sm font-semibold py-2 rounded-xl">🖨 Print</button>
@@ -138,6 +142,8 @@ function CustomersPanel() {
     queryFn: () => adminService.getCustomers(search).then((r) => r.data),
   });
 
+  const validCustomers = Array.isArray(customers) ? customers : [];
+
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
@@ -153,20 +159,24 @@ function CustomersPanel() {
         <div className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr] px-4 py-3 border-b border-white/10 text-xs font-bold tracking-wider text-white/40 uppercase">
           <span>Customer</span><span>Mobile</span><span>Visits</span><span>Rewards</span><span>Last Visit</span>
         </div>
-        {customers?.map((c) => (
-          <div key={c.id} className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr] px-4 py-3 border-b border-white/5 items-center">
-            <span className="text-sm font-semibold">{c.name}</span>
-            <span className="text-xs text-white/50">{c.mobile_number}</span>
-            <div>
-              <span className="text-sm font-bold text-orange-500">{c.current_cycle_visits}/7</span>
-              <div className="h-1 bg-white/5 rounded-full mt-1 w-16">
-                <div className="h-full bg-orange-500 rounded-full" style={{ width: `${(c.current_cycle_visits / 7) * 100}%` }} />
+        {validCustomers.length ? (
+          validCustomers.map((c) => (
+            <div key={c.id} className="grid grid-cols-[2fr_1.5fr_1fr_1fr_1fr] px-4 py-3 border-b border-white/5 items-center">
+              <span className="text-sm font-semibold">{c.name}</span>
+              <span className="text-xs text-white/50">{c.mobile_number}</span>
+              <div>
+                <span className="text-sm font-bold text-orange-500">{c.current_cycle_visits}/7</span>
+                <div className="h-1 bg-white/5 rounded-full mt-1 w-16">
+                  <div className="h-full bg-orange-500 rounded-full" style={{ width: `${(c.current_cycle_visits / 7) * 100}%` }} />
+                </div>
               </div>
+              <span className="text-sm text-emerald-400 font-bold">{c.rewards_earned}</span>
+              <span className="text-xs text-white/40">{c.last_visit || "—"}</span>
             </div>
-            <span className="text-sm text-emerald-400 font-bold">{c.rewards_earned}</span>
-            <span className="text-xs text-white/40">{c.last_visit || "—"}</span>
-          </div>
-        ))}
+          ))
+        ) : (
+          <p className="text-sm text-white/30 text-center py-6">No customers found.</p>
+        )}
       </div>
     </div>
   );
@@ -179,14 +189,10 @@ function RewardsPanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["adminStats"] });
       toast.success("Reward marked as claimed!");
+      const inputEl = document.getElementById("rcode");
+      if (inputEl) inputEl.value = "";
     },
     onError: () => toast.error("Failed to claim reward"),
-  });
-
-  // Reuse customers data to extract rewards
-  const { data: customers } = useQuery({
-    queryKey: ["adminCustomers", ""],
-    queryFn: () => adminService.getCustomers("").then((r) => r.data),
   });
 
   return (
@@ -201,7 +207,7 @@ function RewardsPanel() {
           <div className="mt-4 flex gap-3">
             <input id="rcode" placeholder="BITE-XXXXXXXX" className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white placeholder-white/30 outline-none focus:border-orange-500 text-sm" />
             <button
-              onClick={() => { const v = document.getElementById("rcode").value; if (v) claimReward(v); }}
+              onClick={() => { const v = document.getElementById("rcode")?.value; if (v) claimReward(v); }}
               className="bg-orange-500 text-white font-bold px-4 py-2 rounded-xl text-sm"
             >
               Claim
@@ -225,6 +231,8 @@ function MenuPanel() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["menuAll"] }); toast.success("Item deleted"); },
   });
 
+  const validItems = Array.isArray(items) ? items : [];
+
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
@@ -232,26 +240,30 @@ function MenuPanel() {
         <button onClick={() => toast("Add item modal – wire to backend!")} className="bg-orange-500 text-white font-bold text-sm px-4 py-2 rounded-xl">+ Add Item</button>
       </div>
       <div className="flex flex-col gap-3">
-        {items?.map((item) => (
-          <div key={item.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex justify-between items-center">
-            <div>
-              <p className="font-bold">{item.name}</p>
-              <p className="text-xs text-white/40 mt-0.5">{item.description}</p>
-              <p className="text-orange-500 font-black text-sm mt-1">${item.price}</p>
+        {validItems.length ? (
+          validItems.map((item) => (
+            <div key={item.id} className="bg-white/5 border border-white/10 rounded-2xl p-4 flex justify-between items-center">
+              <div>
+                <p className="font-bold">{item.name}</p>
+                <p className="text-xs text-white/40 mt-0.5">{item.description}</p>
+                <p className="text-orange-500 font-black text-sm mt-1">${item.price}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold px-2 py-1 rounded-full border ${item.available ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" : "text-orange-400 border-orange-500/30 bg-orange-500/10"}`}>
+                  {item.available ? "Available" : "Unavailable"}
+                </span>
+                <button
+                  onClick={() => { if (confirm("Delete this item?")) deleteItem(item.id); }}
+                  className="text-red-400 text-xs border border-red-500/30 bg-red-500/10 px-2 py-1 rounded-lg"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs font-bold px-2 py-1 rounded-full border ${item.available ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" : "text-orange-400 border-orange-500/30 bg-orange-500/10"}`}>
-                {item.available ? "Available" : "Unavailable"}
-              </span>
-              <button
-                onClick={() => { if (confirm("Delete this item?")) deleteItem(item.id); }}
-                className="text-red-400 text-xs border border-red-500/30 bg-red-500/10 px-2 py-1 rounded-lg"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <p className="text-sm text-white/30 text-center py-6">No menu items found.</p>
+        )}
       </div>
     </div>
   );

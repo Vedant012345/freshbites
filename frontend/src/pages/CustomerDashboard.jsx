@@ -60,10 +60,14 @@ export default function CustomerDashboard() {
     );
   }
 
+  // Safe Variable Declarations
   const cycleVisits = data?.current_cycle_visits ?? 0;
   const visitsNeeded = data?.visits_needed ?? 7;
   const totalVisits = data?.total_visits ?? 0;
-  const pendingReward = data?.rewards?.find((r) => r.status === "pending");
+  const rewardsArray = Array.isArray(data?.rewards) ? data.rewards : [];
+  const recentVisitsArray = Array.isArray(data?.recent_visits) ? data.recent_visits : [];
+  
+  const pendingReward = rewardsArray.find((r) => r.status === "pending");
 
   return (
     <div className="min-h-screen bg-[#0b1326] text-white pb-28">
@@ -146,13 +150,13 @@ export default function CustomerDashboard() {
           <StatCard label="Remaining" value={visitsNeeded} color="text-amber-400" sub="Until free food" />
           <StatCard
             label="Rewards Earned"
-            value={data?.rewards?.length ?? 0}
+            value={rewardsArray.length}
             color="text-emerald-400"
             sub="Total lifetime"
           />
           <StatCard
             label="Last Visit"
-            value={data?.recent_visits?.[0]?.visit_date ? new Date(data.recent_visits[0].visit_date).toLocaleDateString("en", { month: "short", day: "numeric" }) : "—"}
+            value={recentVisitsArray[0]?.visit_date ? new Date(recentVisitsArray[0].visit_date).toLocaleDateString("en", { month: "short", day: "numeric" }) : "—"}
             color="text-white"
             sub="Most recent"
           />
@@ -162,10 +166,10 @@ export default function CustomerDashboard() {
         <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
           <h3 className="text-sm font-black mb-4">Visit History</h3>
           <div className="flex flex-col">
-            {data?.recent_visits?.length ? (
-              data.recent_visits.map((v, i) => (
+            {recentVisitsArray.length ? (
+              recentVisitsArray.map((v, i) => (
                 <div
-                  key={v.id}
+                  key={v.id ?? i}
                   className="flex justify-between items-center py-3 border-b border-white/5 last:border-0"
                 >
                   <div className="flex items-center gap-3">
@@ -173,7 +177,7 @@ export default function CustomerDashboard() {
                     <span className="text-sm">Visit #{totalVisits - i}</span>
                   </div>
                   <span className="text-xs text-white/40">
-                    {new Date(v.visit_date).toLocaleDateString("en", { month: "short", day: "numeric" })}
+                    {v.visit_date ? new Date(v.visit_date).toLocaleDateString("en", { month: "short", day: "numeric" }) : "—"}
                   </span>
                 </div>
               ))
