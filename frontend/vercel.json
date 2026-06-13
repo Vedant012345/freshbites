@@ -4,5 +4,8 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
-  ]
+  ],
+  "env": {
+    "VITE_API_URL": "https://freshbites-backend-c6vd.onrender.com/api"
+  }
 }

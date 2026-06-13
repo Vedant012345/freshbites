@@ -5,12 +5,17 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    // Proxy API calls to Django during development
+    // Local dev proxy: forwards /api/* to Django on localhost
+    // In production (Vercel), VITE_API_URL is used directly instead
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },
+  },
+  // Make VITE_API_URL available during build
+  define: {
+    __APP_VERSION__: JSON.stringify('1.0.0'),
   },
 })

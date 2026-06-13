@@ -1,7 +1,3 @@
-"""
-BiteStreak – Django Settings
-Production-ready configuration with environment variable support.
-"""
 import environ
 import os
 from pathlib import Path
@@ -12,16 +8,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env(DEBUG=(bool, False))
 environ.Env.read_env(BASE_DIR / ".env")
 
-# ─── Core ───────────────────────────────────────────────────────────────────
+# ── Core ──────────────────────────────────────────────────────────────────────
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
-CORS_ALLOWED_ORIGINS = [
-    "https://freshbites-backend-c6vd.onrender.com",
-    "https://helthybites-frontend.vercel.app",  # Add your live Vercel link here!
-]
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[
+    "localhost",
+    "127.0.0.1",
+    "freshbites-backend-c6vd.onrender.com",
+    "*",
+])
 
-# ─── Applications ────────────────────────────────────────────────────────────
+# ── Applications ──────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -40,10 +37,11 @@ INSTALLED_APPS = [
     "api",
 ]
 
+# ── Middleware — corsheaders MUST be first ────────────────────────────────────
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",          # <-- MUST be #1
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -72,26 +70,23 @@ TEMPLATES = [
     },
 ]
 
-# ─── Database ────────────────────────────────────────────────────────────────
+# ── Database ──────────────────────────────────────────────────────────────────
 import dj_database_url
 DATABASES = {
-    'default': dj_database_url.config(
-        # 1. Look for the Render/Neon DATABASE_URL environment variable
-        default=os.environ.get('DATABASE_URL'),
+    "default": dj_database_url.config(
+        default=os.environ.get("DATABASE_URL"),
         conn_max_age=600,
-        ssl_require=True
+        ssl_require=True,
     )
 }
-
-# 2. Fallback to your local SQLite file if DATABASE_URL doesn't exist
-if not DATABASES['default']:
-    DATABASES['default'] = {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if not DATABASES["default"]:
+    DATABASES["default"] = {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
-# ─── Cache / Redis ───────────────────────────────────────────────────────────
-REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
 
+# ── Cache / Redis ─────────────────────────────────────────────────────────────
+REDIS_URL = env("REDIS_URL", default="redis://localhost:6379/0")
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -100,18 +95,19 @@ CACHES = {
     }
 }
 
-# ─── Celery ──────────────────────────────────────────────────────────────────
+# ── Celery ────────────────────────────────────────────────────────────────────
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TIMEZONE = "UTC"
 CELERY_BEAT_SCHEDULE = {
     "expire-daily-qr": {
         "task": "api.tasks.expire_daily_qr",
-        "schedule": 60.0,  # every minute; logic inside checks midnight
+        "schedule": 60.0,
     },
 }
 
-# ─── JWT ─────────────────────────────────────────────────────────────────────
+# ── JWT ───────────────────────────────────────────────────────────────────────
+from datetime import timedelta
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
@@ -120,7 +116,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# ─── DRF ─────────────────────────────────────────────────────────────────────
+# ── DRF ───────────────────────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -135,14 +131,24 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 20,
 }
 
-# ─── CORS ────────────────────────────────────────────────────────────────────
-CORS_ALLOWED_ORIGINS = env.list(
-    "CORS_ALLOWED_ORIGINS",
-    default=["http://localhost:5173", "http://127.0.0.1:5173"],
-)
+# ── CORS — single definition, accepts Vercel + localhost ─────────────────────
+CORS_ALLOWED_ORIGINS = [
+    "https://helthybites-frontend.vercel.app",
+    "https://freshbites-backend-c6vd.onrender.com",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+# Also allow any Vercel preview deployment URLs
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://helthybites-.*\.vercel\.app$",
+]
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_HEADERS = True
+CORS_ALLOW_METHODS = [
+    "DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT",
+]
 
-# ─── Cloudinary ──────────────────────────────────────────────────────────────
+# ── Cloudinary ────────────────────────────────────────────────────────────────
 CLOUDINARY_STORAGE = {
     "CLOUD_NAME": env("CLOUDINARY_CLOUD_NAME", default=""),
     "API_KEY": env("CLOUDINARY_API_KEY", default=""),
@@ -150,13 +156,13 @@ CLOUDINARY_STORAGE = {
 }
 DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
-# ─── Static / Media ──────────────────────────────────────────────────────────
+# ── Static / Media ────────────────────────────────────────────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "/media/"
 
-# ─── Password Validation ─────────────────────────────────────────────────────
+# ── Password Validation ───────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -164,7 +170,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# ─── Security Headers (production) ───────────────────────────────────────────
+# ── Security (production only) ────────────────────────────────────────────────
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True

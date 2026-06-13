@@ -4,13 +4,15 @@
  */
 import axios from "axios";
 
+// IMPORTANT: VITE_API_URL must end with /api
+// e.g. https://freshbites-backend-c6vd.onrender.com/api
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
-// ─── Axios Instance ──────────────────────────────────────────────────────────
-
+// ── Axios Instance ────────────────────────────────────────────────────────────
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
+  withCredentials: false,  // JWT uses Authorization header, not cookies
 });
 
 // Attach access token to every request
@@ -44,8 +46,7 @@ api.interceptors.response.use(
 
 export default api;
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
-
+// ── Auth ──────────────────────────────────────────────────────────────────────
 export const authService = {
   register: (data) => api.post("/register", data),
   login: async (data) => {
@@ -66,8 +67,7 @@ export const authService = {
   },
 };
 
-// ─── Customer ────────────────────────────────────────────────────────────────
-
+// ── Customer ──────────────────────────────────────────────────────────────────
 export const customerService = {
   getDashboard: () => api.get("/dashboard"),
   getVisits: () => api.get("/visits"),
@@ -76,8 +76,7 @@ export const customerService = {
   claimReward: (reward_id) => api.post("/rewards/claim", { reward_id }),
 };
 
-// ─── Admin ───────────────────────────────────────────────────────────────────
-
+// ── Admin ─────────────────────────────────────────────────────────────────────
 export const adminService = {
   getStats: () => api.get("/admin/stats"),
   getCustomers: (search = "") =>
@@ -87,8 +86,7 @@ export const adminService = {
   claimReward: (reward_code) => api.post("/admin/claim-reward", { reward_code }),
 };
 
-// ─── Menu ────────────────────────────────────────────────────────────────────
-
+// ── Menu ──────────────────────────────────────────────────────────────────────
 export const menuService = {
   getMenu: () => api.get("/menu"),
   addItem: (data) => api.post("/menu", data),
@@ -96,8 +94,7 @@ export const menuService = {
   deleteItem: (id) => api.delete(`/menu/${id}`),
 };
 
-// ─── Shop ────────────────────────────────────────────────────────────────────
-
+// ── Shop ──────────────────────────────────────────────────────────────────────
 export const shopService = {
   getShop: () => api.get("/shop"),
   updateShop: (data) => api.patch("/shop/update", data),
