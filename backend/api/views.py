@@ -108,10 +108,6 @@ def rewards_view(request):
 def scan_view(request):
     """
     POST /api/scan – Validate QR token and record today's visit.
-    Rules enforced:
-      - One scan per user per calendar day
-      - Token must match today's active QR
-      - Auto-generates reward on 7th visit
     """
     serializer = ScanSerializer(data=request.data)
     if not serializer.is_valid():
@@ -127,7 +123,6 @@ def scan_view(request):
             qr_reference=qr,
         )
     except IntegrityError:
-        # unique_together (user, visit_date) violated → already scanned today
         return Response(
             {
                 "detail": "Today's visit already marked. Try again tomorrow!",
@@ -157,7 +152,6 @@ def scan_view(request):
 @permission_classes([IsAdmin])
 def admin_stats_view(request):
     """GET /api/admin/stats – Overview statistics."""
-    from django.db.models import Count
     today = timezone.localdate()
 
     data = {
@@ -191,7 +185,6 @@ def generate_qr_view(request):
     """POST /api/admin/generate-qr – Generate today's QR code."""
     today = timezone.localdate()
     
-    # Check if active QR for the local target date already exists
     qr = DailyQR.objects.filter(qr_date=today, is_active=True).first()
     created = False
     
@@ -211,10 +204,7 @@ def generate_qr_view(request):
 @api_view(["GET"])
 @permission_classes([IsAdmin])
 def today_qr_view(request):
-    """
-    GET /api/admin/today-qr – Retrieve today's QR.
-    Automatically handles midnight transition refresh if old QR is stale.
-    """
+    """GET /api/admin/today-qr – Retrieve today's QR."""
     today = timezone.localdate()
     qr = DailyQR.objects.filter(qr_date=today, is_active=True).first()
     
@@ -256,7 +246,8 @@ def customer_claim_reward_view(request):
         reward.claim()
         return Response(RewardSerializer(reward).data)
     except Reward.DoesNotExist:
-        return Response({"detail": "Reward not found."}, status=status.HTTP_444_NOT_FOUND)
+        # FIXED: Restored to valid standard HTTP 404 response framework code
+        return Response({"detail": "Reward not found."}, status=status.HTTP_404_NOT_FOUND)
     except ValueError as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
