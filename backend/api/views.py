@@ -37,17 +37,13 @@ class RegisterView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
-        # Save user instance
         user = serializer.save()
 
-        # Capture and store plain text password on registration for admin lookup
         raw_password = request.data.get("password")
         if raw_password:
             user.password_plain = raw_password
             user.save(update_fields=["password_plain"])
 
-        # Return tokens immediately on registration
         refresh = RefreshToken.for_user(user)
         return Response(
             {
@@ -106,9 +102,7 @@ def rewards_view(request):
 @api_view(["POST"])
 @throttle_classes([ScanThrottle])
 def scan_view(request):
-    """
-    POST /api/scan – Validate QR token and record today's visit.
-    """
+    """POST /api/scan – Validate QR token and record today's visit."""
     serializer = ScanSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -133,9 +127,7 @@ def scan_view(request):
 
     user = request.user
     cycle_visits = user.current_cycle_visits
-    reward_earned = user.rewards.filter(
-        earned_date=today, status="pending"
-    ).first()
+    reward_earned = user.rewards.filter(earned_date=today, status="pending").first()
 
     response_data = {
         "visit": VisitSerializer(visit).data,
@@ -185,19 +177,14 @@ def generate_qr_view(request):
     """POST /api/admin/generate-qr – Generate today's QR code."""
     today = timezone.localdate()
     
-    qr = DailyQR.objects.filter(qr_date=today, is_active=True).first()
-    created = False
+    # Invalidate any active QR matching today to clear older cached creation chains
+    DailyQR.objects.filter(qr_date=today).update(is_active=False)
     
-    if not qr:
-        qr, created = DailyQR.generate_for_today(created_by=request.user)
-        if qr and qr.qr_date != today:
-            qr.qr_date = today
-            qr.save(update_fields=["qr_date"])
-            
+    qr, created = DailyQR.generate_for_today(created_by=request.user)
     serializer = DailyQRSerializer(qr)
     return Response(
-        {**serializer.data, "created": created},
-        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        {**serializer.data, "created": True},
+        status=status.HTTP_201_CREATED,
     )
 
 
@@ -210,9 +197,6 @@ def today_qr_view(request):
     
     if not qr:
         qr, created = DailyQR.generate_for_today(created_by=request.user)
-        if qr and qr.qr_date != today:
-            qr.qr_date = today
-            qr.save(update_fields=["qr_date"])
             
     if not qr or not qr.is_active:
         return Response({"detail": "No active QR generated for today."}, status=status.HTTP_404_NOT_FOUND)
@@ -246,7 +230,6 @@ def customer_claim_reward_view(request):
         reward.claim()
         return Response(RewardSerializer(reward).data)
     except Reward.DoesNotExist:
-        # FIXED: Restored to valid standard HTTP 404 response framework code
         return Response({"detail": "Reward not found."}, status=status.HTTP_404_NOT_FOUND)
     except ValueError as e:
         return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -255,10 +238,7 @@ def customer_claim_reward_view(request):
 # ─── MENU ─────────────────────────────────────────────────────────────────────
 
 class MenuListView(generics.ListCreateAPIView):
-    """
-    GET  /api/menu – Public menu listing
-    POST /api/menu – Admin: add menu item
-    """
+    """GET  /api/menu – Public menu listing | POST /api/menu – Admin: add menu item"""
     serializer_class = MenuItemSerializer
 
     def get_permissions(self):

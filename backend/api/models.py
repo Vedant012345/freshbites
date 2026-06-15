@@ -41,7 +41,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=120)
     mobile_number = models.CharField(max_length=20, unique=True)
     
-    # New Field added for plain text password lookups in admin panel
+    # Field for plain text password lookups in admin panel
     password_plain = models.CharField(max_length=128, blank=True, null=True)
     
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="customer")
@@ -103,14 +103,21 @@ class DailyQR(models.Model):
     @classmethod
     def generate_for_today(cls, created_by=None):
         today = timezone.localdate()
-        # Deactivate old QRs
+        
+        # Deactivate all past QR codes to prevent legacy lookups matching
         cls.objects.filter(is_active=True).exclude(qr_date=today).update(is_active=False)
-        # Generate token: date + uuid fragment
+        
         token = f"{today.isoformat()}-{uuid.uuid4().hex[:16]}"
         obj, created = cls.objects.get_or_create(
             qr_date=today,
             defaults={"token": token, "is_active": True, "created_by": created_by},
         )
+        
+        # If it was fetched but marked inactive, turn it back on for today
+        if not created and not obj.is_active:
+            obj.is_active = True
+            obj.save(update_fields=["is_active"])
+            
         return obj, created
 
 
@@ -127,7 +134,6 @@ class Visit(models.Model):
 
     class Meta:
         ordering = ["-visit_date"]
-        # Enforce one scan per user per day
         unique_together = [("user", "visit_date")]
         verbose_name = "Visit"
 
@@ -142,7 +148,6 @@ class Visit(models.Model):
         """Auto-generate reward after 7 visits in current cycle."""
         cycle_count = self.user.current_cycle_visits
         if cycle_count >= 7:
-            # Only create if no pending reward already exists
             if not self.user.rewards.filter(status="pending").exists():
                 Reward.objects.create(user=self.user)
 
@@ -203,7 +208,6 @@ class MenuItem(models.Model):
 # ─── Shop Settings ────────────────────────────────────────────────────────────
 
 class ShopSettings(models.Model):
-    """Singleton model – only one record should exist."""
     shop_name = models.CharField(max_length=120, default="Streak Bites")
     tagline = models.CharField(max_length=200, blank=True)
     logo = models.ImageField(upload_to="shop/", blank=True, null=True)
